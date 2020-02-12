@@ -2,15 +2,17 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { Logger, LoggerFactoryMethod } from '@stryker-mutator/api/logging';
-import { File } from '@stryker-mutator/api/core';
-import * as ts from 'typescript';
-
 import flatMap = require('lodash.flatmap');
+
+import * as ts from 'typescript';
+import { File } from '@stryker-mutator/api/core';
+import { Logger } from '@stryker-mutator/api/logging';
+import { commonTokens, tokens } from '@stryker-mutator/api/plugin';
 
 import { isJavaScriptFile, isMapFile, normalizeFileForTypescript, normalizeFileFromTypescript } from '../helpers/tsHelpers';
 
 import ScriptFile from './ScriptFile';
+import * as transpilerTokens from './transpilerTokens';
 
 const libRegex = /^lib\.(?:\w|\.)*\.?d\.ts$/;
 
@@ -21,23 +23,31 @@ export interface EmitOutput {
 
 export default class TranspilingLanguageService {
   private readonly languageService: ts.LanguageService;
-  private readonly logger: Logger;
   private readonly compilerOptions: ts.CompilerOptions;
   private readonly files: ts.MapLike<ScriptFile> = Object.create(null);
   private readonly diagnosticsFormatter: ts.FormatDiagnosticsHost;
+
+  public static inject = tokens(
+    transpilerTokens.compilerOptions,
+    transpilerTokens.rootFiles,
+    transpilerTokens.projectDirectory,
+    commonTokens.produceSourceMaps,
+    commonTokens.logger,
+    commonTokens.fileConstructor
+  );
 
   constructor(
     compilerOptions: Readonly<ts.CompilerOptions>,
     rootFiles: readonly File[],
     private readonly projectDirectory: string,
     private readonly produceSourceMaps: boolean,
-    getLogger: LoggerFactoryMethod
+    private readonly logger: Logger,
+    private readonly FileConstructor: typeof File
   ) {
     this.compilerOptions = this.adaptCompilerOptions(compilerOptions);
     rootFiles.forEach(file => (this.files[file.name] = new ScriptFile(file.name, file.textContent)));
     const host = this.createLanguageServiceHost();
     this.languageService = ts.createLanguageService(host);
-    this.logger = getLogger(TranspilingLanguageService.name);
     this.diagnosticsFormatter = {
       getCanonicalFileName: fileName => fileName,
       getCurrentDirectory: () => projectDirectory,
@@ -83,9 +93,9 @@ export default class TranspilingLanguageService {
     const jsFile = emittedFiles.find(isJavaScriptFile);
     const mapFile = emittedFiles.find(isMapFile);
     if (jsFile) {
-      const outputFiles: File[] = [new File(normalizeFileFromTypescript(jsFile.name), jsFile.text)];
+      const outputFiles: File[] = [new this.FileConstructor(normalizeFileFromTypescript(jsFile.name), jsFile.text)];
       if (mapFile) {
-        outputFiles.push(new File(normalizeFileFromTypescript(mapFile.name), mapFile.text));
+        outputFiles.push(new this.FileConstructor(normalizeFileFromTypescript(mapFile.name), mapFile.text));
       }
       return { singleResult: !!this.compilerOptions.outFile, outputFiles };
     } else {

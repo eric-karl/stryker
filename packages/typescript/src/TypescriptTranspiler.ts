@@ -1,23 +1,19 @@
 import { File, StrykerOptions } from '@stryker-mutator/api/core';
-import { LoggerFactoryMethod } from '@stryker-mutator/api/logging';
-import { commonTokens, tokens } from '@stryker-mutator/api/plugin';
+import { commonTokens, tokens, Injector, TranspilerPluginContext } from '@stryker-mutator/api/plugin';
 import { Transpiler } from '@stryker-mutator/api/transpile';
 import * as ts from 'typescript';
 
 import { getProjectDirectory, getTSConfig, guardTypescriptVersion, isHeaderFile } from './helpers/tsHelpers';
 import TranspileFilter from './transpiler/TranspileFilter';
 import TranspilingLanguageService from './transpiler/TranspilingLanguageService';
+import * as transpilerTokens from './transpiler/transpilerTokens';
 
 export default class TypescriptTranspiler implements Transpiler {
   private languageService: TranspilingLanguageService;
   private readonly filter: TranspileFilter;
 
-  public static inject = tokens(commonTokens.options, commonTokens.produceSourceMaps, commonTokens.getLogger);
-  constructor(
-    private readonly options: StrykerOptions,
-    private readonly produceSourceMaps: boolean,
-    private readonly getLogger: LoggerFactoryMethod
-  ) {
+  public static inject = tokens(commonTokens.options, commonTokens.injector);
+  constructor(private readonly options: StrykerOptions, private readonly injector: Injector<TranspilerPluginContext>) {
     guardTypescriptVersion();
     this.filter = TranspileFilter.create(this.options);
   }
@@ -44,14 +40,12 @@ export default class TypescriptTranspiler implements Transpiler {
 
   private createLanguageService(typescriptFiles: readonly File[]) {
     const tsConfig = getTSConfig(this.options);
-    const compilerOptions: ts.CompilerOptions = (tsConfig && tsConfig.options) || {};
-    return new TranspilingLanguageService(
-      compilerOptions,
-      typescriptFiles,
-      getProjectDirectory(this.options),
-      this.produceSourceMaps,
-      this.getLogger
-    );
+    const compilerOptions: Readonly<ts.CompilerOptions> = (tsConfig && tsConfig.options) || {};
+    return this.injector
+      .provideValue(transpilerTokens.compilerOptions, compilerOptions)
+      .provideValue(transpilerTokens.rootFiles, typescriptFiles)
+      .provideValue(transpilerTokens.projectDirectory, getProjectDirectory(this.options))
+      .injectClass(TranspilingLanguageService);
   }
 
   private transpileFiles(files: readonly File[]): readonly File[] {

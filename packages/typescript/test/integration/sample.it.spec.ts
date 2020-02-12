@@ -6,6 +6,8 @@ import { File } from '@stryker-mutator/api/core';
 import { Mutant } from '@stryker-mutator/api/mutant';
 import { testInjector } from '@stryker-mutator/test-helpers';
 import { expect } from 'chai';
+import { commonTokens } from '@stryker-mutator/api/plugin';
+import * as sinon from 'sinon';
 
 import { CONFIG_KEY } from '../../src/helpers/keys';
 import TypescriptConfigEditor from '../../src/TypescriptConfigEditor';
@@ -27,6 +29,10 @@ describe('Sample integration', () => {
     testInjector.options = config;
   });
 
+  function createTranspiler(produceSourceMaps: boolean) {
+    return testInjector.injector.provideValue(commonTokens.produceSourceMaps, produceSourceMaps).injectClass(TypescriptTranspiler);
+  }
+
   it('should be able to generate mutants', () => {
     // Generate mutants
     const mutator = testInjector.injector.injectFunction(typescriptMutatorFactory);
@@ -35,13 +41,33 @@ describe('Sample integration', () => {
   });
 
   it('should be able to transpile source code', async () => {
-    const transpiler = new TypescriptTranspiler(config, /*produceSourceMaps: */ false, () => testInjector.logger);
+    const transpiler = createTranspiler(false);
     const outputFiles = await transpiler.transpile(inputFiles);
     expect(outputFiles.length).to.eq(2);
   });
 
+  /**
+   * See https://github.com/stryker-mutator/stryker/issues/2025
+   */
+  it("shouldn't rely on its own version of the File constructor", async () => {
+    // Arrange
+    const expectedFileInstance = { fakeFile: true };
+    const FileConstructor = sinon.stub().returns(expectedFileInstance);
+    const transpiler = testInjector.injector
+      .provideValue(commonTokens.produceSourceMaps, true)
+      .provideValue(commonTokens.fileConstructor, (FileConstructor as unknown) as typeof File)
+      .injectClass(TypescriptTranspiler);
+
+    // Act
+    const outputFiles = await transpiler.transpile([inputFiles[0]]);
+
+    // Assert
+    expect(FileConstructor).calledWithNew;
+    expect(outputFiles[0]).eq(expectedFileInstance);
+  });
+
   it('should be able to produce source maps', async () => {
-    const transpiler = new TypescriptTranspiler(config, /*produceSourceMaps: */ true, () => testInjector.logger);
+    const transpiler = createTranspiler(true);
     const outputFiles = await transpiler.transpile(inputFiles);
     expect(outputFiles).lengthOf(4);
     const mapFiles = outputFiles.filter(file => file.name.endsWith('.map'));
@@ -56,7 +82,7 @@ describe('Sample integration', () => {
     // Transpile mutants
     const mutator = testInjector.injector.injectFunction(typescriptMutatorFactory);
     const mutants = mutator.mutate(inputFiles);
-    const transpiler = new TypescriptTranspiler(config, /*produceSourceMaps: */ false, () => testInjector.logger);
+    const transpiler = createTranspiler(false);
     transpiler.transpile(inputFiles);
     const mathDotTS = inputFiles.filter(file => file.name.endsWith('math.ts'))[0];
     const [firstArithmeticOperatorMutant, stringSubtractMutant] = mutants.filter(m => m.mutatorName === 'ArithmeticOperator');

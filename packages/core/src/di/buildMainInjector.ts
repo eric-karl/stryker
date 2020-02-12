@@ -1,4 +1,4 @@
-import { StrykerOptions } from '@stryker-mutator/api/core';
+import { StrykerOptions, File } from '@stryker-mutator/api/core';
 import { Config } from '@stryker-mutator/api/config';
 import { commonTokens, Injector, OptionsContext, PluginKind, Scope, tokens } from '@stryker-mutator/api/plugin';
 import { Reporter } from '@stryker-mutator/api/report';
@@ -31,6 +31,7 @@ export function buildMainInjector(cliOptions: Partial<StrykerOptions>): Injector
   return rootInjector
     .provideValue(commonTokens.getLogger, getLogger)
     .provideFactory(commonTokens.logger, loggerFactory, Scope.Transient)
+    .provideValue(commonTokens.fileConstructor, File)
     .provideValue(coreTokens.cliOptions, cliOptions)
     .provideClass(coreTokens.configReader, ConfigReader)
     .provideFactory(coreTokens.configReadFromConfigFile, readConfig)

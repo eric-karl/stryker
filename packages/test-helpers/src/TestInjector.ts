@@ -1,4 +1,4 @@
-import { MutatorDescriptor, StrykerOptions } from '@stryker-mutator/api/core';
+import { MutatorDescriptor, StrykerOptions, File } from '@stryker-mutator/api/core';
 import { Logger } from '@stryker-mutator/api/logging';
 import { commonTokens, OptionsContext, PluginResolver } from '@stryker-mutator/api/plugin';
 import * as sinon from 'sinon';
@@ -26,6 +26,7 @@ class TestInjector {
   public logger: sinon.SinonStubbedInstance<Logger>;
   public injector: Injector<OptionsContext> = rootInjector
     .provideValue(commonTokens.getLogger, this.provideLogger)
+    .provideValue(commonTokens.fileConstructor, File)
     .provideFactory(commonTokens.logger, this.provideLogger, Scope.Transient)
     .provideFactory(commonTokens.options, this.provideOptions, Scope.Transient)
     .provideFactory(commonTokens.pluginResolver, this.providePluginResolver, Scope.Transient)

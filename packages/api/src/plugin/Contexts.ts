@@ -1,4 +1,4 @@
-import { MutatorDescriptor, StrykerOptions } from '../../core';
+import { MutatorDescriptor, StrykerOptions, File } from '../../core';
 import { Logger, LoggerFactoryMethod } from '../../logging';
 
 import { PluginKind } from './PluginKind';
@@ -12,6 +12,7 @@ export interface BaseContext {
   [commonTokens.getLogger]: LoggerFactoryMethod;
   [commonTokens.logger]: Logger;
   [commonTokens.pluginResolver]: PluginResolver;
+  [commonTokens.fileConstructor]: typeof File;
 }
 
 /**

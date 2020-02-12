@@ -1,11 +1,3 @@
-/**
- * Define a string literal.
- * @param value Token literal
- */
-function stringLiteral<T extends string>(value: T): T {
-  return value;
-}
-
 const target: import('typed-inject').TargetToken = '$target';
 const injector: import('typed-inject').InjectorToken = '$injector';
 
@@ -13,14 +5,15 @@ const injector: import('typed-inject').InjectorToken = '$injector';
  * Common tokens used for dependency injection (see typed-inject readme for more information)
  */
 export const commonTokens = Object.freeze({
-  getLogger: stringLiteral('getLogger'),
+  getLogger: 'getLogger' as const,
   injector,
-  logger: stringLiteral('logger'),
-  mutatorDescriptor: stringLiteral('mutatorDescriptor'),
-  options: stringLiteral('options'),
-  pluginResolver: stringLiteral('pluginResolver'),
-  produceSourceMaps: stringLiteral('produceSourceMaps'),
-  sandboxFileNames: stringLiteral('sandboxFileNames'),
+  logger: 'logger' as const,
+  mutatorDescriptor: 'mutatorDescriptor' as const,
+  options: 'options' as const,
+  pluginResolver: 'pluginResolver' as const,
+  produceSourceMaps: 'produceSourceMaps' as const,
+  sandboxFileNames: 'sandboxFileNames' as const,
+  fileConstructor: 'fileConstructor' as const,
   target
 });
 
